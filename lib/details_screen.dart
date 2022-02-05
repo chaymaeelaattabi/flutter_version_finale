@@ -55,7 +55,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
     }
     try {
       var response = await client.post(
-          Uri.parse('http://192.168.142.137:8000/api/v1/positif'),
+          Uri.parse('http://192.168.1.11:8000/api/v1/positif'),
 
           body: {'token': token, 'udid': udid,'notifToken':notifToken});
       var decodedResponse =
