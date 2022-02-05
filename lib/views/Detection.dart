@@ -103,7 +103,7 @@ class _DetectionState extends State<Detection> {
     }
     try {
       var response = await client.post(
-          Uri.parse('http://192.168.0.115:8000/api/v1/devices'),
+          Uri.parse('http://192.168.142.137:8000/api/v1/devices'),
 
           body: {'token': token, 'udid': udid});
       var decodedResponse =

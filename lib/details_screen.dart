@@ -1,9 +1,16 @@
 import 'package:db_qr_code/intances.dart';
 import 'package:db_qr_code/views/liteQr.dart';
 import 'package:db_qr_code/qr_code.dart';
+import 'package:device_info/device_info.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_udid/flutter_udid.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter_datetime_picker/flutter_datetime_picker.dart';
+import 'package:uuid/uuid.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert' as convert;
 
 class DetailsScreen extends StatefulWidget {
   final MyQrCode qrCode;
@@ -21,13 +28,51 @@ class _DetailsScreenState extends State<DetailsScreen> {
   DateTime currentDate = DateTime.now();
   String? errorOthers;
   TextEditingController otherController = TextEditingController();
+  DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+  late String token;
+  late String androidId;
+  late String notifToken;
 
+  @override
+  void initState() {
+    super.initState();
+    FirebaseMessaging.instance.getToken().then((value) => token=value!);
+    ajouter();
+  }
+  Future ajouter() async {
+    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+    androidId = androidInfo.androidId;
+    notifToken="eArrxHI5SYmxYJ8Am7dFJS:APA91bEMkCDnfT5Ma-EqCW-emaulS4ZS7WwMfC147Rg4zEBF77gWrM9V5uEtntn1III9kWcKO0kol18g4vAcs3nRwDl_cheV7lyYN3bS9bJECb1I7W5-g83Nsriv6Ng44V5wQjS43MrY";
+  }
+  Future<void> _sendData(token) async {
+    var client = http.Client();
+    String udid;
+    try {
+      udid = await FlutterUdid.consistentUdid;
+    } on PlatformException {
+      var uuid = Uuid();
+      udid = uuid.v1();
+    }
+    try {
+      var response = await client.post(
+          Uri.parse('http://192.168.142.137:8000/api/v1/positif'),
+
+          body: {'token': token, 'udid': udid,'notifToken':notifToken});
+      var decodedResponse =
+      convert.jsonDecode(convert.utf8.decode(response.bodyBytes)) as Map;
+      var key = decodedResponse['key'] as String;
+
+    } finally {
+      client.close();
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: const Text("Details"),
+        backgroundColor: Colors.blue,
+        title: const Text("Détails"),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -37,10 +82,10 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 DatePicker.showDatePicker(context,
                     showTitleActions: true,
                     onChanged: (date) {}, onConfirm: (date) {
-                  setState(() {
-                    currentDate = date;
-                  });
-                }, currentTime: DateTime.now(), locale: LocaleType.fr);
+                      setState(() {
+                        currentDate = date;
+                      });
+                    }, currentTime: DateTime.now(), locale: LocaleType.fr);
               },
               child: Text(
                 formatDate(currentDate),
@@ -49,17 +94,17 @@ class _DetailsScreenState extends State<DetailsScreen> {
           Container(
             child: widget.qrCode.type != 'qrCode'
                 ? Padding(
-                    padding: const EdgeInsets.all(18.0),
-                    child: ListTile(
-                      leading: Text(widget.qrCode.type.toString()),
-                      title: Text(widget.qrCode.content.toString()),
-                    ),
-                  )
+              padding: const EdgeInsets.all(18.0),
+              child: ListTile(
+                leading: Text(widget.qrCode.type.toString()),
+                title: Text(widget.qrCode.content.toString()),
+              ),
+            )
                 : QrImage(
-                    data: widget.qrCode.content.toString(),
-                    version: QrVersions.auto,
-                    size: 200.0,
-                  ),
+              data: widget.qrCode.content.toString(),
+              version: QrVersions.auto,
+              size: 200.0,
+            ),
           ),
           Padding(
             padding: const EdgeInsets.only(left: 30.0, right: 30.0, top: 10.0),
@@ -88,41 +133,43 @@ class _DetailsScreenState extends State<DetailsScreen> {
           ),
           dropdownValue == 'Autre'
               ? Padding(
-                  padding:
-                      const EdgeInsets.only(left: 30.0, right: 30.0, top: 10.0),
-                  child: TextField(
-                    decoration: InputDecoration(errorText: errorOthers),
-                    controller: otherController,
-                  ),
-                )
+            padding:
+            const EdgeInsets.only(left: 30.0, right: 30.0, top: 10.0),
+            child: TextField(
+              decoration: InputDecoration(errorText: errorOthers),
+              controller: otherController,
+            ),
+          )
               : const SizedBox(
-                  width: 0.0,
-                ),
+            width: 0.0,
+          ),
           dropdownValue == 'PCR'
               ? Padding(
-                  padding:
-                      const EdgeInsets.only(left: 30.0, right: 30.0, top: 10.0),
-                  child: Row(
-                    children: [
-                      const Text("Covid positive"),
-                      Switch(
-                        value: isSwitched,
-                        onChanged: (value) {
-                          setState(() {
-                            isSwitched = value;
-                          });
-                        },
-                        activeTrackColor: Colors.lightGreenAccent,
-                        activeColor: Colors.green,
-                      ),
-                    ],
-                  ),
-                )
-              : const SizedBox(
-                  width: 0.0,
+            padding:
+            const EdgeInsets.only(left: 30.0, right: 30.0, top: 10.0),
+            child: Row(
+              children: [
+                const Text("Covid positive"),
+                Switch(
+                  value: isSwitched,
+                  onChanged: (value) {
+                    setState(() {
+                      isSwitched = value;
+                    });
+                  },
+                  activeTrackColor: Colors.lightGreenAccent,
+                  activeColor: Colors.green,
                 ),
+              ],
+            ),
+          )
+              : const SizedBox(
+            width: 0.0,
+          ),
           ElevatedButton(
               onPressed: () {
+                FirebaseMessaging.instance.getToken().then((value) => {_sendData(value)});
+
                 if (dropdownValue == 'Autre') {
                   if (otherController.value.text.toString().isEmpty) {
                     setState(() {
@@ -143,7 +190,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                   context,
                   MaterialPageRoute(
                       builder: (context) =>
-                          const MyHomePage(title: "Qr Code Scanner")),
+                      const MyHomePage(title: "Qr Code Scanner")),
                 );
               },
               child: const Text("Validate"))
